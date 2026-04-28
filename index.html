@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agendamento de Prova</title>
+  <title>Agendamento PISATHON</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -12,6 +13,7 @@
       padding: 40px;
       color: #222;
     }
+
     .container {
       max-width: 720px;
       margin: auto;
@@ -20,15 +22,23 @@
       border-radius: 14px;
       box-shadow: 0 4px 18px rgba(0,0,0,0.08);
     }
+
     h2 {
       margin-top: 0;
       color: #1f3b64;
     }
+
+    p {
+      color: #444;
+      font-size: 16px;
+    }
+
     label {
       font-weight: bold;
       margin-top: 18px;
       display: block;
     }
+
     select, button {
       width: 100%;
       padding: 12px;
@@ -38,6 +48,7 @@
       border: 1px solid #ccc;
       box-sizing: border-box;
     }
+
     button {
       margin-top: 24px;
       background: #1f3b64;
@@ -46,10 +57,12 @@
       cursor: pointer;
       font-weight: bold;
     }
+
     button:disabled {
       background: #999;
       cursor: not-allowed;
     }
+
     .aviso {
       margin-top: 16px;
       padding: 12px;
@@ -57,22 +70,41 @@
       background: #eef4ff;
       display: none;
     }
+
     .erro {
       background: #ffecec;
       color: #8a0000;
     }
+
     .ok {
       background: #eaf8ea;
       color: #1b6b1b;
     }
+
+    .agendamentos {
+      margin-top: 28px;
+      display: none;
+    }
+
+    .agendamento-card {
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      border-left: 4px solid #1f3b64;
+    }
   </style>
 </head>
+
 <body>
 
 <div class="container">
+
   <h2>Agendamento PISATHON</h2>
-  <p style="margin-top: -10px; color: #555;">
-  Selecione sua unidade, turma e o melhor horário disponível para aplicação da prova. Cada turma poderá realizar apenas um agendamento.
+
+  <p>
+    Selecione sua unidade, turma e o melhor horário disponível para aplicação do simulado.
+    Cada turma poderá realizar apenas um agendamento.
   </p>
 
   <label for="unidade">Unidade</label>
@@ -90,9 +122,17 @@
     <option value="">Selecione primeiro a turma</option>
   </select>
 
-  <button id="btnEnviar" onclick="enviar()" disabled>Confirmar agendamento</button>
+  <button id="btnEnviar" onclick="enviar()" disabled>
+    Confirmar agendamento
+  </button>
 
   <div id="mensagem" class="aviso"></div>
+
+  <div id="agendamentosUnidade" class="agendamentos">
+    <h3>Agendamentos já realizados por esta unidade</h3>
+    <div id="listaAgendamentos"></div>
+  </div>
+
 </div>
 
 <script>
@@ -101,7 +141,8 @@ const API = "https://script.google.com/macros/s/AKfycbwwMAi9c0mvpj5mHbkbtc8VT02K
 let dados = {
   turmas: [],
   opcoes: [],
-  usados: []
+  usados: [],
+  agendamentos: []
 };
 
 function normalizar(texto) {
@@ -151,6 +192,8 @@ async function carregar() {
 
     document.getElementById("btnEnviar").disabled = true;
 
+    mostrarAgendamentosDaUnidade();
+
   } catch (e) {
     mostrarMensagem("Erro ao carregar os dados. Confira o link do Apps Script.", "erro");
   }
@@ -163,6 +206,8 @@ function atualizarTurmas() {
   const selectTurma = document.getElementById("turma");
   const selectHorario = document.getElementById("horario");
   const btn = document.getElementById("btnEnviar");
+
+  mostrarAgendamentosDaUnidade();
 
   selectTurma.innerHTML = "";
   selectHorario.innerHTML = '<option value="">Selecione primeiro a turma</option>';
@@ -240,6 +285,37 @@ function validarBotao() {
   const horario = document.getElementById("horario").value;
 
   document.getElementById("btnEnviar").disabled = !(unidade && turma && horario);
+}
+
+function mostrarAgendamentosDaUnidade() {
+  const unidade = document.getElementById("unidade").value;
+  const bloco = document.getElementById("agendamentosUnidade");
+  const lista = document.getElementById("listaAgendamentos");
+
+  if (!unidade || !dados.agendamentos) {
+    bloco.style.display = "none";
+    lista.innerHTML = "";
+    return;
+  }
+
+  const agendamentos = dados.agendamentos
+    .filter(a => a.unidade === unidade)
+    .sort((a, b) => a.turma.localeCompare(b.turma));
+
+  if (agendamentos.length === 0) {
+    bloco.style.display = "none";
+    lista.innerHTML = "";
+    return;
+  }
+
+  bloco.style.display = "block";
+
+  lista.innerHTML = agendamentos.map(a => `
+    <div class="agendamento-card">
+      <strong>${a.turma}</strong><br>
+      ${a.data} - ${a.dia} - ${a.horario}
+    </div>
+  `).join("");
 }
 
 async function enviar() {
