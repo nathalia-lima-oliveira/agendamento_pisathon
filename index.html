@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agendamento de Prova</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+      margin: 0;
+      padding: 40px;
+      color: #222;
+    }
+    .container {
+      max-width: 720px;
+      margin: auto;
+      background: white;
+      padding: 28px;
+      border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+    }
+    h2 {
+      margin-top: 0;
+      color: #1f3b64;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 18px;
+      display: block;
+    }
+    select, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 8px;
+      font-size: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 24px;
+      background: #1f3b64;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+    .aviso {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #eef4ff;
+      display: none;
+    }
+    .erro {
+      background: #ffecec;
+      color: #8a0000;
+    }
+    .ok {
+      background: #eaf8ea;
+      color: #1b6b1b;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Agendamento PISATHON</h2>
+  <p style="margin-top: -10px; color: #555;">
+  Selecione sua unidade, turma e o melhor horário disponível para aplicação da prova. Cada turma poderá realizar apenas um agendamento.
+  </p>
+
+  <label for="unidade">Unidade</label>
+  <select id="unidade">
+    <option value="">Carregando unidades...</option>
+  </select>
+
+  <label for="turma">Ano escolar / Turma</label>
+  <select id="turma" disabled>
+    <option value="">Selecione primeiro a unidade</option>
+  </select>
+
+  <label for="horario">Data / Horário</label>
+  <select id="horario" disabled>
+    <option value="">Selecione primeiro a turma</option>
+  </select>
+
+  <button id="btnEnviar" onclick="enviar()" disabled>Confirmar agendamento</button>
+
+  <div id="mensagem" class="aviso"></div>
+</div>
+
+<script>
+const API = "https://script.google.com/macros/s/AKfycbwWhEEcfYZvO5GmcrEuFhREtSm03Gwkm71JybI2Cio4-_rroTd9dLRdRrgnUMMCxTg/exec";
+
+let dados = {
+  turmas: [],
+  opcoes: [],
+  usados: []
+};
+
+function normalizar(texto) {
+  return String(texto || "").trim();
+}
+
+function chave(unidade, turma) {
+  return normalizar(unidade) + "|" + normalizar(turma);
+}
+
+function mostrarMensagem(texto, tipo = "") {
+  const msg = document.getElementById("mensagem");
+  msg.textContent = texto;
+  msg.className = "aviso " + tipo;
+  msg.style.display = "block";
+}
+
+function limparMensagem() {
+  const msg = document.getElementById("mensagem");
+  msg.style.display = "none";
+}
+
+async function carregar() {
+  try {
+    const res = await fetch(API);
+    dados = await res.json();
+
+    const unidades = [...new Set(dados.turmas.map(t => normalizar(t.unidade)))]
+      .filter(Boolean)
+      .sort();
+
+    const selectUnidade = document.getElementById("unidade");
+    selectUnidade.innerHTML = '<option value="">Selecione a unidade</option>';
+
+    unidades.forEach(u => {
+      const opt = document.createElement("option");
+      opt.value = u;
+      opt.textContent = u;
+      selectUnidade.appendChild(opt);
+    });
+
+    document.getElementById("turma").innerHTML = '<option value="">Selecione primeiro a unidade</option>';
+    document.getElementById("turma").disabled = true;
+
+    document.getElementById("horario").innerHTML = '<option value="">Selecione primeiro a turma</option>';
+    document.getElementById("horario").disabled = true;
+
+    document.getElementById("btnEnviar").disabled = true;
+
+  } catch (e) {
+    mostrarMensagem("Erro ao carregar os dados. Confira o link do Apps Script.", "erro");
+  }
+}
+
+function atualizarTurmas() {
+  limparMensagem();
+
+  const unidade = document.getElementById("unidade").value;
+  const selectTurma = document.getElementById("turma");
+  const selectHorario = document.getElementById("horario");
+  const btn = document.getElementById("btnEnviar");
+
+  selectTurma.innerHTML = "";
+  selectHorario.innerHTML = '<option value="">Selecione primeiro a turma</option>';
+  selectHorario.disabled = true;
+  btn.disabled = true;
+
+  if (!unidade) {
+    selectTurma.innerHTML = '<option value="">Selecione primeiro a unidade</option>';
+    selectTurma.disabled = true;
+    return;
+  }
+
+  const turmasDisponiveis = dados.turmas
+    .filter(t => normalizar(t.unidade) === normalizar(unidade))
+    .map(t => normalizar(t.turma))
+    .filter(t => !dados.usados.includes(chave(unidade, t)))
+    .sort();
+
+  if (turmasDisponiveis.length === 0) {
+    selectTurma.innerHTML = '<option value="">Todas as turmas desta unidade já foram agendadas</option>';
+    selectTurma.disabled = true;
+    mostrarMensagem("Todas as turmas dessa unidade já fizeram agendamento.", "erro");
+    return;
+  }
+
+  selectTurma.disabled = false;
+  selectTurma.innerHTML = '<option value="">Selecione a turma</option>';
+
+  turmasDisponiveis.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    selectTurma.appendChild(opt);
+  });
+}
+
+function atualizarHorarios() {
+  limparMensagem();
+
+  const selectHorario = document.getElementById("horario");
+  const btn = document.getElementById("btnEnviar");
+
+  selectHorario.innerHTML = "";
+  btn.disabled = true;
+
+  const turma = document.getElementById("turma").value;
+
+  if (!turma) {
+    selectHorario.innerHTML = '<option value="">Selecione primeiro a turma</option>';
+    selectHorario.disabled = true;
+    return;
+  }
+
+  if (!dados.opcoes || dados.opcoes.length === 0) {
+    selectHorario.innerHTML = '<option value="">Não há horários disponíveis</option>';
+    selectHorario.disabled = true;
+    mostrarMensagem("Não há horários disponíveis no momento.", "erro");
+    return;
+  }
+
+  selectHorario.disabled = false;
+  selectHorario.innerHTML = '<option value="">Selecione data e horário</option>';
+
+  dados.opcoes.forEach(o => {
+    const opt = document.createElement("option");
+    opt.value = JSON.stringify(o);
+    opt.textContent = `${o.data} - ${o.dia} - ${o.horario} (${o.restantes} vagas restantes)`;
+    selectHorario.appendChild(opt);
+  });
+}
+
+function validarBotao() {
+  const unidade = document.getElementById("unidade").value;
+  const turma = document.getElementById("turma").value;
+  const horario = document.getElementById("horario").value;
+
+  document.getElementById("btnEnviar").disabled = !(unidade && turma && horario);
+}
+
+async function enviar() {
+  limparMensagem();
+
+  const unidade = document.getElementById("unidade").value;
+  const turma = document.getElementById("turma").value;
+  const opcao = JSON.parse(document.getElementById("horario").value);
+
+  const btn = document.getElementById("btnEnviar");
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+
+  try {
+    const res = await fetch(API, {
+      method: "POST",
+      body: JSON.stringify({
+        unidade: unidade,
+        turma: turma,
+        data: opcao.data,
+        horario: opcao.horario
+      })
+    });
+
+    const txt = await res.text();
+
+    if (txt === "OK") {
+      mostrarMensagem("Agendamento realizado com sucesso!", "ok");
+      await carregar();
+    } else if (txt === "JA_EXISTE") {
+      mostrarMensagem("Essa unidade/turma já fez agendamento.", "erro");
+      await carregar();
+    } else if (txt === "HORARIO_LOTADO") {
+      mostrarMensagem("Esse horário acabou de atingir o limite. Escolha outro horário.", "erro");
+      await carregar();
+    } else {
+      mostrarMensagem("Não foi possível registrar. Tente novamente.", "erro");
+      btn.disabled = false;
+    }
+
+  } catch (e) {
+    mostrarMensagem("Erro ao enviar. Verifique sua conexão ou o Apps Script.", "erro");
+    btn.disabled = false;
+  }
+
+  btn.textContent = "Confirmar agendamento";
+}
+
+document.getElementById("unidade").addEventListener("change", atualizarTurmas);
+document.getElementById("turma").addEventListener("change", atualizarHorarios);
+document.getElementById("horario").addEventListener("change", validarBotao);
+
+carregar();
+</script>
+
+</body>
+</html>
