@@ -96,7 +96,7 @@
 </div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbwWhEEcfYZvO5GmcrEuFhREtSm03Gwkm71JybI2Cio4-_rroTd9dLRdRrgnUMMCxTg/exec";
+const API = "https://script.google.com/macros/s/AKfycbxBtiFzCWPKz6ffHsFNYdZtOKyeELTer-tQADhlE2kAzPi7REl0EVIw8nBnmKsHfNI/exec";
 
 let dados = {
   turmas: [],
@@ -254,16 +254,14 @@ async function enviar() {
   btn.textContent = "Enviando...";
 
   try {
-    const res = await fetch(API, {
-      method: "POST",
-      body: JSON.stringify({
-        unidade: unidade,
-        turma: turma,
-        data: opcao.data,
-        horario: opcao.horario
-      })
-    });
+    const url = API
+      + "?acao=salvar"
+      + "&unidade=" + encodeURIComponent(unidade)
+      + "&turma=" + encodeURIComponent(turma)
+      + "&data=" + encodeURIComponent(opcao.data)
+      + "&horario=" + encodeURIComponent(opcao.horario);
 
+    const res = await fetch(url);
     const txt = await res.text();
 
     if (txt === "OK") {
