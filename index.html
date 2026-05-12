@@ -274,7 +274,7 @@ function atualizarHorarios() {
   dados.opcoes.forEach(o => {
     const opt = document.createElement("option");
     opt.value = JSON.stringify(o);
-    opt.textContent = `${o.data} - ${o.dia} - ${o.horario} (${o.restantes} vagas restantes)`;
+    opt.textContent = `${o.data} - ${o.dia} - ${o.horario}`;
     selectHorario.appendChild(opt);
   });
 }
